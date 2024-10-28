@@ -1,0 +1,22 @@
+---
+title: "Planning"
+format: html
+---
+
+### Context
+
+I love the NeverTooSmall HYoutube channel. It displays some lovely small homes, and clever design decisions that make living in these homes a joy. 
+
+However, very many of these projects include a bland grey couch, which I do not care for.
+
+The goal for this project is to analyze the videos and identify the couches in the videos, and classify them as grey or not grey.
+
+There are a few ways to go aobut this. 
+
+- I could do a classic pipeline, where I download the videos, extract the frames, and then run a model on the frames to see whether there is a couch in the frame or not. Then I could run a second model to see if the couch is grey or not.
+
+- I could try to do a one-shot approach with a vision transformer-based model that takes video as an input and outputs the frames with the couches highlighted. This would be a more complex model, but could be simpler. 
+
+I could try both and write up my experiences with each approach.
+
+https://huggingface.co/microsoft/Florence-2-large
