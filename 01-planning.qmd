@@ -19,4 +19,8 @@ There are a few ways to go aobut this.
 
 I could try both and write up my experiences with each approach.
 
-https://huggingface.co/microsoft/Florence-2-large
+For instance, [the Florence 2 model](https://huggingface.co/microsoft/Florence-2-large) from Microsoft seems like a good bet.
+
+See the write up for this model [here](https://colab.research.google.com/?ref=blog.roboflow.com#fileId=https%3A//huggingface.co/microsoft/Florence-2-large/blob/main/sample_inference.ipynb)
+
+The point of the project would be to show that I can make a pipeline that runs on a github action and continues every time there is a new video on the channel. Would be fun to implement.
