@@ -1,0 +1,35 @@
+name: Extract 100th Frame
+
+on:
+  workflow_dispatch:
+    inputs:
+      video_url:
+        description: 'YouTube video URL'
+        required: true
+      video_id:
+        description: 'Unique ID for the video'
+        required: true
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.x'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pytube opencv-python-headless
+
+    - name: Run frame extractor script
+      env:
+        VIDEO_URL: ${{ inputs.video_url }}
+        VIDEO_ID: ${{ inputs.video_id }}
+      run: python frame_extractor.py
