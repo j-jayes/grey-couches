@@ -1,3 +1,8 @@
+"""
+This file fetches video metadata from a YouTube playlist and saves it to a JSON file.
+It also downloads the largest thumbnail for each video and saves it to a local folder.
+"""
+
 import yt_dlp
 import json
 import requests

@@ -168,3 +168,4 @@ kadirnar/*
 # videos
 videos/*
 
+yolov8n-seg.pt

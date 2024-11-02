@@ -1,3 +1,12 @@
+"""
+This file looks at each Never Too Small video and attempts to extract an image of a couch from it.
+
+It does this with the help of a pre-trained YOLO model that detects couches in each frame of the video.
+
+The script then saves the frame with the largest couch detection area as an image file.
+
+"""
+
 import os
 import cv2
 from ultralytics import YOLO

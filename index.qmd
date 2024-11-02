@@ -1,0 +1,22 @@
+---
+title: "NeverTooSmall Couch Colours"
+format: html
+---
+
+
+```{python}
+import pandas as pd
+
+# read in data from "data/couch_info.json"
+
+df = pd.read_json("data/couch_info.json")
+
+# drop the top-level variable
+df = df.drop(columns=[df.columns[0]])
+
+# convert the dataframe to long format
+df_long = pd.melt(df)
+
+# display the long format dataframe
+df_long.head()
+```
