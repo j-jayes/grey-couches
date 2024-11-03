@@ -27,7 +27,7 @@ I really enjoy watching the YouTube channel [NeverTooSmall](), which showcases c
 
 I was watching an episode with my girlfriend recently when she remarked, “Doesn’t it feel like every second couch is a boring grey one on this channel? Why can’t they choose some more fun colors?!”
 
-<iframe width="560" height="315" src="https://www.youtube.com/embed/KXNIx4sfzns?si=fzW2P-jG3r8xTAds&amp;controls=0&amp;start=80" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+<iframe width="1280" height="720" src="https://www.youtube.com/embed/KXNIx4sfzns?si=fzW2P-jG3r8xTAds&amp;controls=0&amp;start=80" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
 
 There are probably a couple of practical reasons people might go for a grey couch. For one, in a small space, a bold color can quickly overpower the room. And secondly, grey doesn’t show wear and discoloration as easily as white, which is often a popular choice for its stylish look.
 
