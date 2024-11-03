@@ -1,22 +1,257 @@
 ---
 title: "NeverTooSmall Couch Colours"
-format: html
+format: 
+    html:
+        code-fold: true
+        code-block-border-left: "#31BAE9"
+execute:
+    warning: false
+    message: false
 ---
 
+## Intro
+
+I really enjoy watching the YouTube channel [NeverTooSmall](), which showcases cleverly designed small spaces from around the world.
+
+I was watching an episode with my girlfriend recently when she remarked, “Doesn’t it feel like every second couch is a boring grey one on this channel? Why can’t they choose some more fun colors?!”
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/KXNIx4sfzns?si=fzW2P-jG3r8xTAds&amp;controls=0&amp;start=80" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+There are probably a couple of practical reasons people might go for a grey couch. For one, in a small space, a bold color can quickly overpower the room. And secondly, grey doesn’t show wear and discoloration as easily as white, which is often a popular choice for its stylish look.
+
+But Kathy’s comment sent me down a rabbit hole. I wanted to find out how many of the couches on NeverTooSmall were actually grey. 
+
+My close friend and flatmate duing my Master's degree, Nick, once confidently said regarding his interest in audio processing that, “Computer vision is a solved field”—and that was five years ago! So I thought, how hard could it be to use a small, open-source, CPU-based computer vision model to analyze the videos from NeverTooSmall, identify the frames with a couch, extract its color, and visualize the results in a nice waffle chart?
+
+It turns out, it’s not that hard. In this post, I’ll share the answer to my question and, if you're interested, explain the technical steps I took to get there.
+
+```{r}
+library(tidyverse)
+library(jsonlite)
+library(gt)
+
+df <- fromJSON("data/couch_info_with_colour_classifications.json")
+
+df <- as_tibble(df)
+
+n_videos <- nrow(df)
+
+n_couches <- nrow(df %>% filter(couch_detected))
+
+n_grey_couches <- nrow(df %>% filter(couch_detected, couch_colour == "grey"))
+
+
+color_mapping <- c(
+    "beige" = "#F5F5DC", # Soft beige
+    "light blue" = "#A9D8E6", # Lightened sky blue
+    "green" = "#A3DCA3", # Soft pastel green
+    "grey" = "#C0C0C0", # Light grey
+    "blue" = "#87CEEB", # Light blue
+    "black" = "#4E4E4E", # Dark grey to represent pastel black
+    "brown" = "#C8A165", # Light brown
+    "white" = "#FFFFFF", # White
+    "red" = "#FF9999", # Lightened true red
+    "yellow" = "#FFFFB3", # Soft pastel yellow
+    "teal" = "#99CED3", # Soft teal
+    "orange" = "#FFCC99", # Lightened orange
+    "pink" = "#FFB6C1", # Soft pink
+    "purple" = "#CBA1E6" # Light purple
+)
+
+
+# Expand the data to repeat each color based on the count
+expanded_df <- df %>%
+    count(couch_colour) %>%
+    filter(!is.na(couch_colour)) %>%
+    arrange(desc(n)) %>%
+    uncount(n) %>%
+    mutate(tile_id = row_number())
+
+# Calculate the number of columns and rows for the grid
+n_cols <- ceiling(sqrt(nrow(expanded_df)))
+
+# Create a grid with the colors
+grid <- expand.grid(x = 1:n_cols, y = 1:n_cols) %>%
+    slice(1:nrow(expanded_df)) %>%
+    bind_cols(expanded_df)
+
+# Create legend order using number of couches
+legend_order <- expanded_df %>%
+    group_by(couch_colour) %>%
+    summarise(n = n()) %>%
+    arrange(desc(n)) %>%
+    pull(couch_colour)
+
+# Plot the grid with colors
+grid %>%
+    ggplot(aes(x = x, y = y, fill = factor(couch_colour, levels = legend_order))) +
+    geom_tile(color = "black") +
+    scale_fill_manual(values = color_mapping) +
+    theme_void() +
+    coord_fixed() +
+    labs(
+        # title = "The colours of the couches in NeverTooSmall videos",
+        fill = "Couch Colour"
+    ) +
+    guides(fill = guide_legend(reverse = TRUE))
+
+
+ggsave("assets/couch_colours_waffle_chart.png", width = 8, height = 8, dpi = 300)
+```
+
+**Spoiler Alert:** Out of the `{r} n_videos` videos on the channel, I identified `{r} n_couches` couches, and `{r} n_grey_couches` of them were grey! That’s nearly three times the next most common color, beige, and four times the third most common color, white.
+
+:::{.column-margin}
+
+```{r}
+df %>%
+    count(couch_colour, sort = TRUE) %>%
+    mutate(couch_colour = str_to_title(couch_colour)) %>%
+    replace_na(list(couch_colour = "No couch")) %>%
+    gt() %>%
+    tab_options(column_labels.hidden = TRUE) %>%
+    tab_header(title = md("**[NeverTooSmall](https://www.nevertoosmall.com/) Couches**"))
+
+```
+:::
+
+
+## How Did We Do It?
+
+I made all my code available for this project in the GitHub repo [linked here](https://github.com/j-jayes/grey-couches).
+
+Here’s how I broke down the project:
+
+1. Ingest data from the NeverTooSmall YouTube playlist.
+2. Identify frames in the videos that contain a couch, selecting the frame with the largest ratio of couch-to-frame area.
+3. Isolate the image of the couch from this frame.
+4. Classify the couch’s color.
+5. Visualize the results.
+
+In the process, I ran into some challenges—especially with color classification—so I tried two approaches to get accurate results. I’ll walk you through each step in detail below.
+
+---
+
+### 1. Ingesting the Data
+
+This part was relatively straightforward. Using the `yt_dlp` library, I pulled video information from the official NeverTooSmall playlist and stored the thumbnails in a folder in my repo. With this, I could access the necessary data on each video right in my environment.
+
+### 2. Identifying Frames with a Couch
+
+Luckily, there are a plethora of open-source computer vision models available on platforms like Hugging Face. For this project, I chose a model that performs well on just a CPU and is trained to identify about 80 objects, including couches: the You Only Look Once (YOLO) v8 model. YOLO was originally created in 2016 by Joseph Redmon and coauthors, who aimed to make object detection fast and efficient for real-time applications.^[[Joseph Redmon's CV](assets/Redmon-Resume.pdf) is worth a peak if you're needing some inspiration for your own.]
+
+I wrote a loop to analyze every 100th frame of each NeverTooSmall video, checking if the frame contained a couch and, if so, calculating the ratio of the couch’s bounding box to the frame. At the end of each loop, I selected the frame with the largest ratio, giving me the clearest image of the couch. While there are probably more advanced ways to do this, this method was simple and effective.
+
+![Here is an example of frame selection from the [Sydney Loft House Small Homes by Brad Swartz](https://www.youtube.com/watch?v=KXNIx4sfzns) above](assets/nts_couch_ratio.png)
+
+### 3. Isolating the Couch Image from the Frame
+
+Next, I used a different version of the YOLO model to segment the frame and extract only the part containing the couch, removing everything else in the image. This step allowed me to focus solely on the couch for color classification.
+
+![Here is an example of couch segmentation from the [Sydney Loft House Small Homes by Brad Swartz](https://www.youtube.com/watch?v=KXNIx4sfzns) above](assets/nts_couch_segmented.jpg)
+
+
+### 4. Classifying the Couch’s Color
+
+For color classification, I initially used a standard clustering algorithm, k-means, to determine the most common 5 colours in the segmented couch image. However, this approach had its limitations. For example, in one instance, the couch was wooden with a white bench cushion and large green scatter cushions. Since the scatter cushions took up more space, my k-means algorithm gave most weight to the color green.^[![The offending image](assets/nts_offending_couch.jpg){width=100}] If asked, though, I’d classify this couch as white based on the cushion.
+
+Another challenge came from the variations in lighting conditions across different videos, as the shots are filmed at various times of day and in different locations. This lighting variance made it hard to extract a general color, as each image offered a very specific shade instead. I created a colour strip for each couch including five colours, weighted by their frequency in the image. As you can see in a gif of these strips in the margin, the colours vary significantly, and are quite dull in some cases.
+
+:::{.column-margin}
+![The 5 colour strips extracted from the segmented image of each couch](assets/scrolled_couch_colors.gif)
+:::
+
+To address these issues, I tried grouping colors by their HSV values to create a more generalized classification. While this produced a visually appealing waffle chart, it didn’t fully answer Kathy’s question about the dominant couch color.
+
+![The visually appealing waffle chart of couch colors](assets/couch_color_grid_sorted_by_family.jpg)
+
+> *Sidebar: A bit about color perception*  
+> It’s easy for a human to answer, “What color is this?” because our brains are adept at contextualizing color based on lighting, surrounding colors, and other factors. For a computer, though, the task is more challenging. Computers see a “pure” color without context, so they struggle with nuances that are obvious to us. This challenge made me appreciate the difficulty of color perception in computer vision.
+
+To improve accuracy, I took a different approach, using the OpenAI API, which now accepts images. I simply asked the GPT-4o model to classify the couch color based on the segmented image. OpenAI’s API now allows you to specify a data model in your request to ensure you get a specific type of response. Using Pydantic data models in the API request helped me standardize outputs and reduced errors significantly. I can **really** recommend having a look at the [structured outputs option](https://platform.openai.com/docs/guides/structured-outputs) if you are working with the OpenAI API.
+
+Here is the simple data model and prompt I used to get the color classification from the API:
 
 ```{python}
-import pandas as pd
+#| eval: false
 
-# read in data from "data/couch_info.json"
+class CouchColourClassification(BaseModel):
+    couch_colour: str = Field(description="The classified color of the couch")
 
-df = pd.read_json("data/couch_info.json")
-
-# drop the top-level variable
-df = df.drop(columns=[df.columns[0]])
-
-# convert the dataframe to long format
-df_long = pd.melt(df)
-
-# display the long format dataframe
-df_long.head()
+PROMPT = """
+You will see a still from a video. What color is the couch in the image? Use a single word to describe the color, e.g. 'white', 'black', 'grey', 'beige', 'blue', 'green', 'red', 'brown', 'purple', 'yellow', 'orange', 'pink'. If the couch has multiple colors, choose the most prominent one. 
+"""
 ```
+
+### 5. Visualizing the Results
+
+I’m a fan of the waffle chart for representing shares—it’s easier to interpret than a pie chart and, in my opinion, looks great! The visual result of our color classification highlights the distribution of couch colors across the channel’s videos.
+
+![The waffle chart of couch colors](assets/couch_colours_waffle_chart.png)
+
+Additionally, I used Quarto’s tabsets to group videos by couch color, so you can explore them below.
+
+```{r}
+df_names <- fromJSON("data/never_too_small_official_playlist.json") %>%
+    as_tibble() %>%
+    rename(video_id = id) %>%
+    select(-upload_date, -date_added)
+
+df_table <- df %>%
+    inner_join(df_names, by = "video_id") %>%
+    filter(couch_detected) %>%
+    select(-couch_detected) %>%
+    mutate(couch_image = glue::glue("https://github.com/j-jayes/grey-couches/blob/main/data/couch_images/{video_id}_couch.jpg?raw=true"))
+
+df_table_in <- df_table %>%
+    mutate(
+        image = glue::glue("<a href = {url}>
+                        <img src='{couch_image}' width='160' height='90'>
+                      </a>"),
+    ) %>%
+    select(title, image, couch_colour) %>%
+    mutate(image = purrr::map(image, gt::html))
+
+make_couch_table <- function(colour_in) {
+    df_table_in %>%
+        filter(couch_colour == colour_in) %>%
+        gt()
+}
+```
+
+
+```{r}
+make_tab <- function(colour) {         # function to make the tabs
+  cat("::: {.panel}\n")             # Open tab
+  cat("##", colour, "{.panel-name}\n") # Label tab
+  p <- make_couch_table(colour)           # Create plot
+  print(p)                          # Display plot
+  cat("\n")                         # Space
+  cat(":::\n")                      # Close tab
+}
+```
+
+::::: {.panelset}
+
+```{r, results = 'asis'}
+
+colour_list <- df_table_in %>%
+    count(couch_colour, sort = T) %>%
+    filter(n > 3) %>%
+    pull(couch_colour)
+
+
+purrr::walk(colour_list, make_tab)     # make the tabs for each island that is there
+```
+
+
+
+:::::
+
+## Conclusion
+
+In conclusion, Kathy was right: grey dominates the couch color spectrum on NeverTooSmall.
+
+I hope you enjoyed following along on this journey to answer a casual question with computer vision. If you’d like to try it yourself, feel free to check out the [GitHub repo here](https://github.com/j-jayes/grey-couches) and let me know what you find!
+
+

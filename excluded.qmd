@@ -1,0 +1,33 @@
+
+```{r}
+process <- tibble(
+    step = c(
+        "Ingest data from the NeverTooSmall YouTube playlist.",
+        "Identify frames in the videos that contain a couch, selecting the frame with the largest ratio of couch-to-frame area.",
+        "Isolate the image of the couch from this frame.",
+        "Classify the couch’s color.",
+        "Visualize the results."
+    ),
+    image_path = c(
+        "assets/nts_yt_playlist.png",
+        "assets/nts_bounding_box.png",
+        "assets/nts_segmenteation.jpg",
+        "assets/nts_img_colormap.png",
+        "assets/nts_couch_colours_waffle_chart.png"
+    )
+)
+
+process %>%
+    gt() %>%
+    text_transform(
+        locations = cells_body(columns = image_path),
+        fn = function(x) {
+            local_image(
+                filename = x,
+                height = 100
+            )
+        }
+    ) %>%
+    tab_options(column_labels.hidden = TRUE) %>%
+    tab_header(title = md("**Project Steps**"))
+```
