@@ -44,6 +44,8 @@ print(df_final)
 
 df_final.value_counts('couch_colour')
 
+df_final['couch_colour'].unique()
+
 # save the final DataFrame to a json file
 df_final.to_json("data/couch_info_with_colour_classifications.json", orient='records', indent=4)
 
