@@ -4,6 +4,7 @@ format:
     html:
         code-fold: true
         code-block-border-left: "#31BAE9"
+        code-overflow: wrap
 execute:
     warning: false
     message: false
@@ -95,8 +96,6 @@ grid %>%
     ) +
     guides(fill = guide_legend(reverse = TRUE))
 
-
-ggsave("assets/couch_colours_waffle_chart.png", width = 8, height = 8, dpi = 300)
 ```
 
 **Spoiler Alert:** Out of the `{r} n_videos` videos on the channel, I identified `{r} n_couches` couches, and `{r} n_grey_couches` of them were grey! That’s nearly three times the next most common color, beige, and four times the third most common color, white.
@@ -130,11 +129,13 @@ Here’s how I broke down the project:
 
 In the process, I ran into some challenges—especially with color classification—so I tried two approaches to get accurate results. I’ll walk you through each step in detail below.
 
+I think it is worth noting here that while the task of telling what colour a couch is may seem trivial, the fact that it seems so is truly a testament to the fantastic computer vision libraries available today that make it so easy to do.
+
 ---
 
 ### 1. Ingesting the Data
 
-This part was relatively straightforward. Using the `yt_dlp` library, I pulled video information from the official NeverTooSmall playlist and stored the thumbnails in a folder in my repo. With this, I could access the necessary data on each video right in my environment.
+This part was relatively straightforward. Using the `yt_dlp` library, I pulled video information from the official NeverTooSmall playlist and stored the thumbnails in a folder in my repo.
 
 ### 2. Identifying Frames with a Couch
 
@@ -174,6 +175,7 @@ Here is the simple data model and prompt I used to get the color classification 
 
 ```{python}
 #| eval: false
+#| code-fold: show
 
 class CouchColourClassification(BaseModel):
     couch_colour: str = Field(description="The classified color of the couch")
@@ -201,9 +203,7 @@ df_table <- df %>%
     inner_join(df_names, by = "video_id") %>%
     filter(couch_detected) %>%
     select(-couch_detected) %>%
-    mutate(couch_image = glue::glue("https://github.com/j-jayes/grey-couches/blob/main/data/couch_images/{video_id}_couch.jpg?raw=true"))
-
-df_table_in <- df_table %>%
+    mutate(couch_image = glue::glue("https://github.com/j-jayes/grey-couches/blob/main/data/couch_images/{video_id}_couch.jpg?raw=true")) %>%
     mutate(
         image = glue::glue("<a href = {url}>
                         <img src='{couch_image}' width='160' height='90'>
@@ -212,41 +212,43 @@ df_table_in <- df_table %>%
     select(title, image, couch_colour) %>%
     mutate(image = purrr::map(image, gt::html))
 
-make_couch_table <- function(colour_in) {
-    df_table_in %>%
-        filter(couch_colour == colour_in) %>%
-        gt()
-}
+
 ```
 
 
 ```{r}
-make_tab <- function(colour) {         # function to make the tabs
-  cat("::: {.panel}\n")             # Open tab
-  cat("##", colour, "{.panel-name}\n") # Label tab
-  p <- make_couch_table(colour)           # Create plot
-  print(p)                          # Display plot
-  cat("\n")                         # Space
-  cat(":::\n")                      # Close tab
+list_of_couch_colours <- df_table %>%
+    count(couch_colour) %>%
+    filter(n > 3) %>%
+    arrange(n) %>%
+    pull(couch_colour)
+
+make_couch_table <- function(colour_in) {
+
+    colour_title <- str_to_title(colour_in)
+    colour_title <- glue::glue("{colour_title} Couches")
+
+    cat(sprintf("### %s\n", colour_title))
+
+    table <- df_table %>%
+        filter(couch_colour == colour_in) %>%
+        select(-couch_colour) %>%
+        gt() %>% 
+        tab_options(column_labels.hidden = TRUE) 
+
+    print(table)
 }
 ```
 
-::::: {.panelset}
+```{r}
+#| panel: tabset
+#| output: asis
 
-```{r, results = 'asis'}
+for (colour in list_of_couch_colours) {
+    make_couch_table(colour)
+}
 
-colour_list <- df_table_in %>%
-    count(couch_colour, sort = T) %>%
-    filter(n > 3) %>%
-    pull(couch_colour)
-
-
-purrr::walk(colour_list, make_tab)     # make the tabs for each island that is there
 ```
-
-
-
-:::::
 
 ## Conclusion
 
