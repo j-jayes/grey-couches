@@ -9,6 +9,7 @@ format:
 execute:
     warning: false
     message: false
+    keep-md: true
 knitr:
   opts_chunk:
     comment: ''
@@ -24,7 +25,7 @@ include-in-header:
 
 ## Intro
 
-I really enjoy watching the YouTube channel [NeverTooSmall](), which showcases cleverly designed small spaces from around the world.
+I really enjoy watching the YouTube channel [NeverTooSmall](https://www.nevertoosmall.com/), which showcases cleverly designed small spaces from around the world.
 
 I was watching an episode with my girlfriend recently when she remarked, “Doesn’t it feel like every second couch is a boring grey one on this channel? Why can’t they choose some more fun colors?!”
 
